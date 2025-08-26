@@ -14,6 +14,8 @@ import numpy as np
 from bs4 import BeautifulSoup
 import faiss
 from sentence_transformers import SentenceTransformer
+import gdown
+import zipfile
 
 # -------------------- إضافة الشريط العلوي مع أيقونة التواصل --------------------
 st.markdown("""
@@ -36,6 +38,23 @@ st.markdown("""
     </a>
 </div>
 """, unsafe_allow_html=True)
+
+# -------------------- تحميل البيانات من Google Drive --------------------
+# الرابط المباشر لتحميل الملف من Google Drive
+file_url = "https://drive.google.com/uc?id=1CMlkOVj4pv9VxCLhoM5GNgivbt5Jl7Bu"  # استبدل بـ رابط Google Drive المباشر
+output_path = "data.zip"  # تحديد مكان حفظ الملف بعد تحميله
+
+# تحميل الملف باستخدام gdown
+gdown.download(file_url, output_path, quiet=False)
+
+# فك ضغط الملف إذا كان مضغوطًا
+zip_file_path = "data.zip"  # الملف المضغوط
+extract_folder = "data_folder"  # المجلد الذي سيتم استخراج الملفات فيه
+
+with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+    zip_ref.extractall(extract_folder)
+
+st.success("تم تحميل وفك ضغط البيانات بنجاح!")
 
 # -------------------- استخراج الرسائل من HTML --------------------
 def parse_telegram_html(html_path: str):
