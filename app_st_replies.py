@@ -42,13 +42,13 @@ st.markdown("""
 # -------------------- تحميل البيانات من Google Drive --------------------
 # الرابط المباشر لتحميل الملف من Google Drive
 file_url = "https://drive.google.com/uc?id=1CMlkOVj4pv9VxCLhoM5GNgivbt5Jl7Bu"  # استبدل بـ رابط Google Drive المباشر
-output_path = "data.zip"  # تحديد مكان حفظ الملف بعد تحميله
+output_path = "telegram-chat-replies-DGS_kau.zip"   # تحديد مكان حفظ الملف بعد تحميله
 
 # تحميل الملف باستخدام gdown
 gdown.download(file_url, output_path, quiet=False)
 
 # فك ضغط الملف إذا كان مضغوطًا
-zip_file_path = "data.zip"  # الملف المضغوط
+zip_file_path = "telegram-chat-replies-DGS_kau.zip"  # الملف المضغوط
 extract_folder = "data_folder"  # المجلد الذي سيتم استخراج الملفات فيه
 
 with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
