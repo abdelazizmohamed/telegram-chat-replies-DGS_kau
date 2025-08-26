@@ -41,7 +41,7 @@ st.markdown("""
 
 # -------------------- تحميل البيانات من Google Drive --------------------
 # الرابط المباشر لتحميل الملف من Google Drive
-file_url = "https://drive.google.com/uc?id=1CMlkOVj4pv9VxCLhoM5GNgivbt5Jl7Bu"  # استبدل بـ رابط Google Drive المباشر
+file_url = "https://drive.google.com/uc?export=download&id=1Q5LSQ9Q8H5wq4rOQUKSmEh5b-BfMCfmM"  # استبدل بـ رابط Google Drive المباشر
 output_path = "telegram-chat-replies-DGS_kau.zip"   # تحديد مكان حفظ الملف بعد تحميله
 
 # تحميل الملف باستخدام gdown
