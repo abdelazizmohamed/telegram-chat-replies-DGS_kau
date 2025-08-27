@@ -1,4 +1,5 @@
 import os
+import gdown  # تأكد من إضافة الاستيراد هنا
 import zipfile
 import streamlit as st
 from pathlib import Path
@@ -8,28 +9,6 @@ import faiss
 from sentence_transformers import SentenceTransformer
 from collections import defaultdict, deque
 import json
-
-# -------------------- إضافة الشريط العلوي مع أيقونة التواصل --------------------
-st.markdown("""
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-<div style="
-    width: 100%;
-    padding: 10px 20px;
-    background-color: #f2f2f2;
-    text-align: center;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    font-family: 'Cairo', sans-serif;
-    font-size: 16px;
-">
-    تم برمجة هذا الموقع بواسطة المهندس عبدالعزيز <br>
-    يمكنك التواصل معي: 
-    <a href="https://t.me/Abdelaziz770" target="_blank" style="text-decoration:none; color:#1DA1F2; font-weight:bold;">
-        <i class="fab fa-telegram"></i> @Abdelaziz770
-    </a>
-</div>
-""", unsafe_allow_html=True)
 
 # -------------------- تحميل البيانات من Google Drive --------------------
 file_url = "https://drive.google.com/uc?id=1CMlkOVj4pv9VxCLhoM5GNgivbt5Jl7Bu"  # استبدل بـ رابط Google Drive المباشر
