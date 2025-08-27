@@ -1,22 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-Streamlit واجهة عرض محادثات تليجرام والردود RTL مع التواصل
-"""
-
+import os
+import zipfile
 import streamlit as st
 from pathlib import Path
-import re
-import json
-from collections import defaultdict, deque
 from datetime import datetime
-
-import numpy as np
 from bs4 import BeautifulSoup
 import faiss
 from sentence_transformers import SentenceTransformer
-import gdown
-import zipfile
-import os
+from collections import defaultdict, deque
+import json
 
 # -------------------- إضافة الشريط العلوي مع أيقونة التواصل --------------------
 st.markdown("""
@@ -45,22 +36,29 @@ file_url = "https://drive.google.com/uc?id=1CMlkOVj4pv9VxCLhoM5GNgivbt5Jl7Bu"  #
 output_path = "telegram-chat-replies-DGS_kau.zip"
 extract_folder = "data_folder"  # 📂 المجلد الثابت
 
-# تحميل الملف لو المجلد مش موجود
+# التحقق من وجود البيانات
 if not os.path.exists(extract_folder):
     st.info("⬇️ جاري تحميل البيانات من Google Drive ...")
-    gdown.download(file_url, output_path, quiet=False)
+    try:
+        gdown.download(file_url, output_path, quiet=False)
+        st.success("✅ تم تحميل البيانات بنجاح!")
 
-    st.info("📂 جاري فك الضغط ...")
-    with zipfile.ZipFile(output_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_folder)
+        st.info("📂 جاري فك الضغط ...")
+        with zipfile.ZipFile(output_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_folder)
 
-    st.success("✅ تم تحميل وفك ضغط البيانات بنجاح!")
+        st.success("✅ تم فك ضغط البيانات بنجاح!")
+    except Exception as e:
+        st.error(f"فشل تحميل أو فك الضغط: {e}")
+else:
+    st.info("📂 البيانات موجودة بالفعل في المجلد!")
 
 # -------------------- استخراج الرسائل من HTML --------------------
 def parse_telegram_html(html_path: str):
     html = Path(html_path).read_text(encoding="utf-8", errors="ignore")
     soup = BeautifulSoup(html, "lxml")
     msgs = []
+
     for msg_div in soup.select("div.message"):
         mid = msg_div.get("id") or ""
         user_display, username = "", ""
@@ -126,10 +124,14 @@ def save_index(out_dir, index, metas, model_name):
 
 def load_index(out_dir):
     outp = Path(out_dir)
-    index = faiss.read_index(str(outp / "index.faiss"))
-    metas = [json.loads(l) for l in (outp / "rows.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
-    meta = json.loads((outp / "meta.json").read_text(encoding="utf-8"))
-    return index, metas, meta
+    if os.path.exists(str(outp / "index.faiss")):
+        index = faiss.read_index(str(outp / "index.faiss"))
+        metas = [json.loads(l) for l in (outp / "rows.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+        meta = json.loads((outp / "meta.json").read_text(encoding="utf-8"))
+        return index, metas, meta
+    else:
+        st.error("ملف index.faiss غير موجود!")
+        return None, None, None
 
 # -------------------- Answers --------------------
 def _build_children_map(metas):
@@ -147,6 +149,9 @@ def _build_children_map(metas):
 
 def cmd_answers(out_dir, q, k=5, max_replies=20, max_depth=5):
     index, metas, meta = load_index(out_dir)
+    if index is None:
+        return []
+    
     model_name = meta.get("model", "distiluse-base-multilingual-cased-v2")
     model = SentenceTransformer(model_name)
     children, id_to_idx = _build_children_map(metas)
@@ -183,7 +188,6 @@ p, span, div, h2, h3, h4 { font-family: 'Cairo', sans-serif !important; }
 """, unsafe_allow_html=True)
 
 # -------------------- واجهة البحث --------------------
-out_dir = extract_folder  # مسار ثابت مخفي
 query_text = st.text_input("أدخل نص البحث", "امتى يبدأ التقديم؟")
 k = st.number_input("عدد الرسائل الأساسية المراد عرضها (Top-k)", min_value=1, value=5)
 max_replies = st.number_input("الحد الأقصى للردود لكل رسالة", min_value=1, value=20)
@@ -191,7 +195,7 @@ max_depth = st.number_input("الحد الأقصى لعمق الردود", min_v
 show_only_with_replies = st.checkbox("عرض الرسائل التي لها ردود فقط")
 
 if st.button("عرض الردود"):
-    all_results = cmd_answers(out_dir, query_text, k=k, max_replies=max_replies, max_depth=max_depth)
+    all_results = cmd_answers(extract_folder, query_text, k=k, max_replies=max_replies, max_depth=max_depth)
 
     if show_only_with_replies:
         all_results = [r for r in all_results if len(r['replies'])>0]
