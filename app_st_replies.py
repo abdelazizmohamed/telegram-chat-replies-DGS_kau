@@ -1,49 +1,69 @@
-import os
-import gdown
-import zipfile
+# -*- coding: utf-8 -*-
+"""
+Streamlit واجهة عرض محادثات تليجرام والردود RTL مع التواصل
+"""
+
 import streamlit as st
 from pathlib import Path
+import re
+import json
+from collections import defaultdict, deque
 from datetime import datetime
+
+import numpy as np
 from bs4 import BeautifulSoup
 import faiss
 from sentence_transformers import SentenceTransformer
-from collections import defaultdict, deque
-import json
+import gdown
+import zipfile
+import os
+
+# -------------------- إضافة الشريط العلوي مع أيقونة التواصل --------------------
+st.markdown("""
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div style="
+    width: 100%;
+    padding: 10px 20px;
+    background-color: #f2f2f2;
+    text-align: center;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 16px;
+">
+    تم برمجة هذا الموقع بواسطة المهندس عبدالعزيز <br>
+    يمكنك التواصل معي: 
+    <a href="https://t.me/Abdelaziz770" target="_blank" style="text-decoration:none; color:#1DA1F2; font-weight:bold;">
+        <i class="fab fa-telegram"></i> @Abdelaziz770
+    </a>
+</div>
+""", unsafe_allow_html=True)
 
 # -------------------- تحميل البيانات من Google Drive --------------------
 file_url = "https://drive.google.com/uc?id=1CMlkOVj4pv9VxCLhoM5GNgivbt5Jl7Bu"  # استبدل بـ رابط Google Drive المباشر
-output_path = "telegram-chat-replies-DGS_kau.zip"   # تحديد مكان حفظ الملف بعد تحميله
+output_path = "telegram-chat-replies-DGS_kau.zip"
+extract_folder = "data_folder"  # 📂 المجلد الثابت
 
-# تحميل الملف باستخدام gdown
-try:
+# تحميل الملف لو المجلد مش موجود
+if not os.path.exists(extract_folder):
+    st.info("⬇️ جاري تحميل البيانات من Google Drive ...")
     gdown.download(file_url, output_path, quiet=False)
-    st.success("تم تحميل البيانات بنجاح!")
-except Exception as e:
-    st.error(f"فشل تحميل البيانات: {e}")
 
-# التحقق من وجود الملف قبل فك الضغط
-if os.path.exists(output_path):
-    # فك ضغط الملف إذا كان مضغوطًا
-    zip_file_path = output_path  # الملف المضغوط
-    extract_folder = "data_folder"  # المجلد الذي سيتم استخراج الملفات فيه
-
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+    st.info("📂 جاري فك الضغط ...")
+    with zipfile.ZipFile(output_path, 'r') as zip_ref:
         zip_ref.extractall(extract_folder)
 
-    st.success("تم فك ضغط البيانات بنجاح!")
-else:
-    st.error("الملف المضغوط غير موجود.")
+    st.success("✅ تم تحميل وفك ضغط البيانات بنجاح!")
 
 # -------------------- استخراج الرسائل من HTML --------------------
 def parse_telegram_html(html_path: str):
     html = Path(html_path).read_text(encoding="utf-8", errors="ignore")
     soup = BeautifulSoup(html, "lxml")
     msgs = []
-
     for msg_div in soup.select("div.message"):
         mid = msg_div.get("id") or ""
-        user_display = ""
-        username = ""
+        user_display, username = "", ""
         from_name = msg_div.select_one(".from_name")
         if from_name:
             user_display = from_name.get_text(" ", strip=True)
@@ -106,14 +126,10 @@ def save_index(out_dir, index, metas, model_name):
 
 def load_index(out_dir):
     outp = Path(out_dir)
-    if os.path.exists(str(outp / "index.faiss")):
-        index = faiss.read_index(str(outp / "index.faiss"))
-        metas = [json.loads(l) for l in (outp / "rows.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
-        meta = json.loads((outp / "meta.json").read_text(encoding="utf-8"))
-        return index, metas, meta
-    else:
-        st.error("ملف index.faiss غير موجود!")
-        return None, None, None
+    index = faiss.read_index(str(outp / "index.faiss"))
+    metas = [json.loads(l) for l in (outp / "rows.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    meta = json.loads((outp / "meta.json").read_text(encoding="utf-8"))
+    return index, metas, meta
 
 # -------------------- Answers --------------------
 def _build_children_map(metas):
@@ -131,9 +147,6 @@ def _build_children_map(metas):
 
 def cmd_answers(out_dir, q, k=5, max_replies=20, max_depth=5):
     index, metas, meta = load_index(out_dir)
-    if index is None:
-        return []
-    
     model_name = meta.get("model", "distiluse-base-multilingual-cased-v2")
     model = SentenceTransformer(model_name)
     children, id_to_idx = _build_children_map(metas)
@@ -162,7 +175,6 @@ def cmd_answers(out_dir, q, k=5, max_replies=20, max_depth=5):
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-/* تأكيد الاتجاه من اليمين لليسار */
 body { direction: rtl; font-family: 'Cairo', sans-serif !important; }
 h1.title { font-family: 'Cairo', sans-serif !important; font-size: 2.5em; text-align: center; color: #1A1A1A; }
 p, span, div, h2, h3, h4 { font-family: 'Cairo', sans-serif !important; }
@@ -171,7 +183,7 @@ p, span, div, h2, h3, h4 { font-family: 'Cairo', sans-serif !important; }
 """, unsafe_allow_html=True)
 
 # -------------------- واجهة البحث --------------------
-out_dir = st.text_input("المجلد الذي يحتوي على الفهرس (Index folder)", "./data_folder")
+out_dir = extract_folder  # مسار ثابت مخفي
 query_text = st.text_input("أدخل نص البحث", "امتى يبدأ التقديم؟")
 k = st.number_input("عدد الرسائل الأساسية المراد عرضها (Top-k)", min_value=1, value=5)
 max_replies = st.number_input("الحد الأقصى للردود لكل رسالة", min_value=1, value=20)
@@ -184,7 +196,6 @@ if st.button("عرض الردود"):
     if show_only_with_replies:
         all_results = [r for r in all_results if len(r['replies'])>0]
 
-    # عرض الرسائل والردود
     for res in all_results:
         seed = res['seed']
         st.markdown(f"**{seed['date']} | {seed['user']} ({seed['username']})**")
